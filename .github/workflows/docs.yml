@@ -49,9 +49,20 @@ jobs:
         env:
           INPUT_REF: ${{ inputs.ref }}
         run: |
-          git checkout "${INPUT_REF}" -- docs/ README.md
+          git fetch origin "${INPUT_REF}" --depth=1 || true
+          git fetch --tags --depth=1 || true
 
-      # Decide which ref name to publish as (used by mike and by the URL
+          if git show-ref --verify --quiet "refs/remotes/origin/${INPUT_REF}"; then
+            SRC_REF="origin/${INPUT_REF}"
+          elif git show-ref --verify --quiet "refs/tags/${INPUT_REF}"; then
+            SRC_REF="${INPUT_REF}"
+          else
+            echo "Ref '${INPUT_REF}' is not available in this workflow checkout"
+            git show-ref
+            exit 1
+          fi
+
+          git checkout "${SRC_REF}" -- docs/ README.md      # Decide which ref name to publish as (used by mike and by the URL
       # rewriting in prepare-docs.sh). For dispatched runs with an input,
       # use that; otherwise fall back to the triggering ref.
       - name: Determine build ref
